@@ -1,3 +1,53 @@
 spring:
   application:
-    name: Api Gateway
+    name: api-gateway
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: orders-service-yaml
+          uri: lb://orders-service
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: orders-service-cb
+                fallbackUri: forward:/fallback/orders
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
+            - StripPrefix=3
+
+        - id: users-service-yaml
+          uri: lb://users-service
+          predicates:
+            - Path=/api/v1/users/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: users-service-cb
+                fallbackUri: forward:/fallback/users
+            - StripPrefix=3
+
+        - id: products-service-yaml
+          uri: lb://products-service
+          predicates:
+            - Path=/api/v1/products/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: products-service-cb
+                fallbackUri: forward:/fallback/products
+            - StripPrefix=3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway,metrics,prometheus
