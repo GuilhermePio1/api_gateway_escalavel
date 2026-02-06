@@ -1,5 +1,6 @@
 package com.portfolio.api_gateway.ratelimit;
 
+import com.portfolio.api_gateway.exception.RateLimitExceededException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
@@ -10,7 +11,6 @@ import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.cloud.gateway.route.Route;
 import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
 import org.springframework.core.Ordered;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -71,15 +71,16 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
                         return chain.filter(exchange);
                     }
 
-                    // Rate limit excedido: 429 Too Many Requests
-                    log.warn("Rate limit excedido: route={}, remaining={}, limit={}",
-                            routeId, result.getRemaining(), result.getLimit());
-
+                    // Rate limit excedido: propaga exceção para o GlobalErrorFilter
                     long retryAfterSeconds = Math.max(1,
                             result.getResetAt().getEpochSecond() - Instant.now().getEpochSecond());
-                    response.getHeaders().set("Retry-After", String.valueOf(retryAfterSeconds));
-                    response.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
-                    return response.setComplete();
+
+                    return Mono.error(new RateLimitExceededException(
+                            result.getLimit(),
+                            result.getRemaining(),
+                            result.getResetAt(),
+                            retryAfterSeconds
+                    ));
                 });
     }
 
