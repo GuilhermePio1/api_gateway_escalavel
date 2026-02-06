@@ -3,6 +3,7 @@ package com.portfolio.api_gateway.config;
 import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.cloud.gateway.support.ipresolver.XForwardedRemoteAddressResolver;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.web.server.ServerWebExchange;
 
 import java.net.InetSocketAddress;
@@ -18,6 +19,7 @@ import java.security.Principal;
  * 1. User ID extraído do JWT (Principal name) para requisições autenticadas
  * 2. Fallback para IP do cliente quando não há autenticação
  */
+@Configuration
 public class RateLimiterKeyResolverConfig {
 
     // Resolver nativo do Spring para lidar com X-Forwarded-For

@@ -122,7 +122,7 @@ public class SecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of(
-                "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"
+                "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset", "Retry-After"
         ));
         config.setMaxAge(3600L);
 

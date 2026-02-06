@@ -56,6 +56,7 @@ spring:
               - X-RateLimit-Limit
               - X-RateLimit-Remaining
               - X-RateLimit-Reset
+              - Retry-After
             max-age: 3600
 
       # Default filters aplicados a todas as rotas
@@ -77,12 +78,6 @@ spring:
               args:
                 name: orders-service
                 fallbackUri: forward:/fallback/orders
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                redis-rate-limiter.requestedTokens: 1
-                key-resolver: "#{@userKeyResolver}"
             - name: Bulkhead
               args:
                 name: orders-service
@@ -113,12 +108,6 @@ spring:
               args:
                 name: users-service
                 fallbackUri: forward:/fallback/users
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                redis-rate-limiter.requestedTokens: 1
-                key-resolver: "#{@userKeyResolver}"
             - name: Bulkhead
               args:
                 name: users-service
@@ -149,12 +138,6 @@ spring:
               args:
                 name: products-service
                 fallbackUri: forward:/fallback/products
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                redis-rate-limiter.requestedTokens: 1
-                key-resolver: "#{@userKeyResolver}"
             - name: Bulkhead
               args:
                 name: products-service
@@ -189,6 +172,26 @@ spring:
         jwt:
           issuer-uri: ${JWT_ISSUER_URI:http://localhost:8180/realms/api-gateway}
           jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8180/realms/api-gateway/protocol/openid-connect/certs}
+
+# ============================================================
+# Rate Limiting (Sliding Window + Redis + Lua)
+# ============================================================
+gateway:
+  rate-limit:
+    enabled: true
+    default-policy:
+      max-requests: 100
+      window-ms: 60000
+    route-policies:
+      orders-service:
+        max-requests: 10
+        window-ms: 60000
+      users-service:
+        max-requests: 10
+        window-ms: 60000
+      products-service:
+        max-requests: 10
+        window-ms: 60000
 
 # ============================================================
 # Resilience4j

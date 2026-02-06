@@ -98,6 +98,10 @@
 			<artifactId>resilience4j-bulkhead</artifactId>
 			<version>${resilience4j.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-circuitbreaker-reactor-resilience4j</artifactId>
+		</dependency>
 
 		<!-- Actuator (Health, Metrics, Info) -->
 		<dependency>
