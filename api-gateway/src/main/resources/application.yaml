@@ -57,6 +57,7 @@ spring:
               - X-RateLimit-Remaining
               - X-RateLimit-Reset
               - Retry-After
+              - X-Request-Id
             max-age: 3600
 
       # Default filters aplicados a todas as rotas
