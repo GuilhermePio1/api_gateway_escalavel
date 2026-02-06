@@ -1,3 +1,304 @@
+# ============================================================
+# API Gateway Escalavel - Configuracao Principal
+# ============================================================
+
+server:
+  port: 8080
+  netty:
+    connection-timeout: 5s
+    idle-timeout: 30s
+
 spring:
   application:
-    name: API Gateway Escalavel
+    name: api-gateway
+
+  # --- Spring Cloud Consul (Service Discovery) ---
+  cloud:
+    consul:
+      host: ${SPRING_CLOUD_CONSUL_HOST:localhost}
+      port: ${SPRING_CLOUD_CONSUL_PORT:8500}
+      discovery:
+        enabled: true
+        prefer-ip-address: true
+        health-check-interval: 10s
+        health-check-path: /actuator/health
+        instance-id: ${spring.application.name}:${random.value}
+
+    # --- Spring Cloud Config ---
+    config:
+      enabled: ${SPRING_CONFIG_ENABLED:false}
+      uri: ${SPRING_CONFIG_URI:http://localhost:8888}
+      fail-fast: false
+
+    # --- Spring Cloud Gateway ---
+    gateway:
+      # Service Discovery Locator (rotas automaticas via Consul)
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      # Configuracao global de CORS
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins: "*"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowed-headers: "*"
+            exposed-headers:
+              - X-RateLimit-Limit
+              - X-RateLimit-Remaining
+              - X-RateLimit-Reset
+            max-age: 3600
+
+      # Default filters aplicados a todas as rotas
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+        - AddResponseHeader=X-Gateway-Instance, ${spring.application.name}
+
+      # ============================================================
+      # ROTAS YAML - Microsservicos
+      # ============================================================
+      routes:
+        # --- Orders Service ---
+        - id: orders-service
+          uri: lb://orders-service
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: orders-service
+                fallbackUri: forward:/fallback/orders
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
+            - name: Bulkhead
+              args:
+                name: orders-service
+                fallbackUri: forward:/fallback/orders
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                methods: GET
+                backoff:
+                  firstBackoff: 100ms
+                  maxBackoff: 500ms
+                  factor: 2
+                  basedOnPreviousValue: false
+            - StripPrefix=2
+            - AddRequestHeader=X-Service-Name, orders-service
+          metadata:
+            response-timeout: 3000
+            connect-timeout: 1000
+
+        # --- Users Service ---
+        - id: users-service
+          uri: lb://users-service
+          predicates:
+            - Path=/api/v1/users/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: users-service
+                fallbackUri: forward:/fallback/users
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
+            - name: Bulkhead
+              args:
+                name: users-service
+                fallbackUri: forward:/fallback/users
+            - name: Retry
+              args:
+                retries: 2
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                methods: GET
+                backoff:
+                  firstBackoff: 100ms
+                  maxBackoff: 400ms
+                  factor: 2
+                  basedOnPreviousValue: false
+            - StripPrefix=2
+            - AddRequestHeader=X-Service-Name, users-service
+          metadata:
+            response-timeout: 2000
+            connect-timeout: 1000
+
+        # --- Products Service ---
+        - id: products-service
+          uri: lb://products-service
+          predicates:
+            - Path=/api/v1/products/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: products-service
+                fallbackUri: forward:/fallback/products
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
+            - name: Bulkhead
+              args:
+                name: products-service
+                fallbackUri: forward:/fallback/products
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE,GATEWAY_TIMEOUT
+                methods: GET
+                backoff:
+                  firstBackoff: 100ms
+                  maxBackoff: 500ms
+                  factor: 2
+                  basedOnPreviousValue: false
+            - StripPrefix=2
+            - AddRequestHeader=X-Service-Name, products-service
+          metadata:
+            response-timeout: 5000
+            connect-timeout: 1000
+
+  # --- Redis ---
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+      timeout: 2000ms
+
+  # --- Security (OAuth2 Resource Server) ---
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8180/realms/api-gateway}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8180/realms/api-gateway/protocol/openid-connect/certs}
+
+# ============================================================
+# Resilience4j
+# ============================================================
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 100
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 10
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+    instances:
+      orders-service:
+        base-config: default
+      users-service:
+        base-config: default
+        failure-rate-threshold: 40
+      products-service:
+        base-config: default
+        sliding-window-size: 200
+
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 100ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - java.io.IOException
+    instances:
+      orders-service:
+        base-config: default
+      users-service:
+        base-config: default
+        max-attempts: 2
+
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 3s
+        cancel-running-future: true
+    instances:
+      orders-service:
+        base-config: default
+      users-service:
+        timeout-duration: 2s
+      products-service:
+        timeout-duration: 5s
+
+  bulkhead:
+    configs:
+      default:
+        max-concurrent-calls: 25
+        max-wait-duration: 0
+    instances:
+      orders-service:
+        base-config: default
+      users-service:
+        base-config: default
+      products-service:
+        max-concurrent-calls: 50
+
+# ============================================================
+# Actuator & Observability
+# ============================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,gateway,circuitbreakers,retries
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    gateway:
+      enabled: true
+  health:
+    circuitbreakers:
+      enabled: true
+    ratelimiters:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      type: w3c
+
+# ============================================================
+# Logging
+# ============================================================
+logging:
+  level:
+    root: INFO
+    com.portfolio.api_gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    io.github.resilience4j: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level %logger{36} - %msg%n"
