@@ -1,0 +1,30 @@
+# Build artifacts
+target/
+*.jar
+*.war
+
+# IDEs e Ferramentas
+.idea/
+.vscode/
+*.iml
+.git/
+.gitignore
+
+# Logs locais
+logs/
+*.log
+
+# Infraestrutura (Keycloak, Prometheus, Grafana configs)
+# Não são necessários para o build do Java
+infra/
+docker-compose.yml
+docker-compose.yaml
+
+# Maven Wrapper (Opcional, já que sua imagem base já tem Maven)
+.mvn/
+mvnw
+mvnw.cmd
+
+# Documentação
+*.md
+LICENSE

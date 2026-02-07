@@ -1,0 +1,217 @@
+{
+  "realm": "api-gateway",
+  "enabled": true,
+  "displayName": "API Gateway Realm",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrador com acesso total"
+      },
+      {
+        "name": "user",
+        "description": "Usuario padrao com acesso limitado"
+      }
+    ],
+    "client": {
+      "api-gateway": [
+        {
+          "name": "client-admin",
+          "description": "Admin role no client api-gateway"
+        }
+      ]
+    }
+  },
+  "clientScopes": [
+    {
+      "name": "products:read",
+      "description": "Leitura de produtos",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Acesso de leitura a produtos"
+      }
+    },
+    {
+      "name": "products:write",
+      "description": "Escrita de produtos",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Acesso de escrita a produtos"
+      }
+    },
+    {
+      "name": "orders:read",
+      "description": "Leitura de pedidos",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Acesso de leitura a pedidos"
+      }
+    },
+    {
+      "name": "orders:write",
+      "description": "Escrita de pedidos",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Acesso de escrita a pedidos"
+      }
+    },
+    {
+      "name": "users:read",
+      "description": "Leitura de usuarios",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Acesso de leitura a usuarios"
+      }
+    },
+    {
+      "name": "users:write",
+      "description": "Escrita de usuarios",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": "Acesso de escrita a usuarios"
+      }
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "api-gateway",
+      "name": "API Gateway Client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "api-gateway-secret",
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:8080/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8080"
+      ],
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "products:read",
+        "orders:read",
+        "users:read"
+      ],
+      "optionalClientScopes": [
+        "products:write",
+        "orders:write",
+        "users:write"
+      ],
+      "protocolMappers": [
+        {
+          "name": "realm-roles-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "api-gateway-public",
+      "name": "API Gateway Public Client (SPA/Mobile)",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:4200/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:4200"
+      ],
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "products:read",
+        "orders:read",
+        "users:read"
+      ],
+      "optionalClientScopes": [
+        "products:write",
+        "orders:write",
+        "users:write"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@gateway.local",
+      "firstName": "Admin",
+      "lastName": "Gateway",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin",
+        "user"
+      ],
+      "clientRoles": {
+        "api-gateway": [
+          "client-admin"
+        ]
+      }
+    },
+    {
+      "username": "user",
+      "enabled": true,
+      "email": "user@gateway.local",
+      "firstName": "User",
+      "lastName": "Gateway",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "user",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "user"
+      ]
+    }
+  ]
+}

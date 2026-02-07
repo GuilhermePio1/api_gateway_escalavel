@@ -97,7 +97,7 @@ O gateway foi projetado para atender aos seguintes requisitos não-funcionais:
 | Segurança | Spring Security + OAuth2 | 7.0+   | Suporte completo a OIDC, JWT e Resource Server |
 | Service Discovery | Consul | 1.22+  | Service mesh integrado, health checks avançados, KV store |
 | Resiliência | Resilience4j | 2.3+   | Lightweight, funcional, integração nativa com Spring Boot |
-| Cache/Rate Limit | Redis | 8.6+   | Estruturas de dados atômicas, Lua scripting para rate limiting distribuído |
+| Cache/Rate Limit | Redis | 8.4+   | Estruturas de dados atômicas, Lua scripting para rate limiting distribuído |
 | Configuração | Spring Cloud Config | 5.0+   | Configuração centralizada com refresh sem restart |
 | Métricas | Micrometer + Prometheus | 1.16+  | Instrumentação dimensional, padrão de mercado |
 | Tracing | OpenTelemetry | 1.53+  | Vendor-neutral, auto-instrumentação, contexto propagado |

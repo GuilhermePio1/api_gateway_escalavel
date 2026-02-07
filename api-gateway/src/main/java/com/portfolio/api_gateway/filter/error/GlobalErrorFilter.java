@@ -98,7 +98,7 @@ public class GlobalErrorFilter implements ErrorWebExceptionHandler {
                 errorResponse = buildErrorResponse(sue, path, requestId);
                 errorResponse.setDetails(Map.of("service", sue.getServiceName()));
                 response.getHeaders().set("X-Fallback-Response", "true");
-                log.warn("Servico indisponivel",
+                log.warn("Serviço indisponível",
                         kv("event", "service_unavailable"),
                         kv("path", path),
                         kv("request_id", requestId),
@@ -130,8 +130,8 @@ public class GlobalErrorFilter implements ErrorWebExceptionHandler {
             case AuthenticationCredentialsNotFoundException ignored -> {
                 status = HttpStatus.UNAUTHORIZED;
                 errorResponse = ErrorResponse.of(status, "CREDENTIALS_NOT_FOUND",
-                        "Credenciais de autenticacao nao encontradas.", path, requestId);
-                log.warn("Credenciais nao encontradas",
+                        "Credenciais de autenticação não encontradas.", path, requestId);
+                log.warn("Credenciais não encontradas",
                         kv("event", "authentication_failed"),
                         kv("path", path),
                         kv("request_id", requestId));
@@ -140,8 +140,8 @@ public class GlobalErrorFilter implements ErrorWebExceptionHandler {
             case AuthenticationException ignored -> {
                 status = HttpStatus.UNAUTHORIZED;
                 errorResponse = ErrorResponse.of(status, "UNAUTHORIZED",
-                        "Autenticacao necessaria para acessar este recurso.", path, requestId);
-                log.warn("Autenticacao falhou",
+                        "Autenticação necessaria para acessar este recurso.", path, requestId);
+                log.warn("Autenticação falhou",
                         kv("event", "authentication_failed"),
                         kv("path", path),
                         kv("request_id", requestId),
@@ -151,7 +151,7 @@ public class GlobalErrorFilter implements ErrorWebExceptionHandler {
             case AccessDeniedException ignored -> {
                 status = HttpStatus.FORBIDDEN;
                 errorResponse = ErrorResponse.of(status, "ACCESS_DENIED",
-                        "Permissao insuficiente para acessar este recurso.", path, requestId);
+                        "Permissão insuficiente para acessar este recurso.", path, requestId);
                 log.warn("Acesso negado",
                         kv("event", "access_denied"),
                         kv("path", path),
@@ -184,8 +184,8 @@ public class GlobalErrorFilter implements ErrorWebExceptionHandler {
             case ConnectException ignored -> {
                 status = HttpStatus.BAD_GATEWAY;
                 errorResponse = ErrorResponse.of(status, "BAD_GATEWAY",
-                        "Nao foi possivel conectar ao servico downstream.", path, requestId);
-                log.error("Falha de conexao com downstream",
+                        "Não foi possível conectar ao serviço downstream.", path, requestId);
+                log.error("Falha de conexão com downstream",
                         kv("event", "connection_failed"),
                         kv("path", path),
                         kv("request_id", requestId),
@@ -195,7 +195,7 @@ public class GlobalErrorFilter implements ErrorWebExceptionHandler {
             case TimeoutException ignored -> {
                 status = HttpStatus.GATEWAY_TIMEOUT;
                 errorResponse = ErrorResponse.of(status, "GATEWAY_TIMEOUT",
-                        "O servico downstream nao respondeu dentro do tempo limite.", path, requestId);
+                        "O serviço downstream não respondeu dentro do tempo limite.", path, requestId);
                 log.error("Timeout de downstream",
                         kv("event", "gateway_timeout"),
                         kv("path", path),
@@ -206,7 +206,7 @@ public class GlobalErrorFilter implements ErrorWebExceptionHandler {
                 status = HttpStatus.INTERNAL_SERVER_ERROR;
                 errorResponse = ErrorResponse.of(status, "INTERNAL_ERROR",
                         "Erro interno do gateway. Tente novamente mais tarde.", path, requestId);
-                log.error("Erro interno nao tratado",
+                log.error("Erro interno não tratado",
                         kv("event", "internal_error"),
                         kv("path", path),
                         kv("request_id", requestId),

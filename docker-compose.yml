@@ -1,0 +1,144 @@
+services:
+
+  # ============================================================
+  # Redis - Rate Limiting (Sliding Window + Lua)
+  # ============================================================
+  redis:
+    image: redis:8.4.0-alpine
+    container_name: api-gateway-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gateway-net
+
+  # ============================================================
+  # Keycloak - OAuth2 / OpenID Connect (Identity Provider)
+  # ============================================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.5.2
+    container_name: api-gateway-keycloak
+    command: ["start-dev", "--import-realm", "--health-enabled=true", "--metrics-enabled=true"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HTTP_PORT: 8180
+      KC_HEALTH_ENABLED: "true"
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8180
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "8180:8180"
+      - "9000:9000"
+    volumes:
+      - ./infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - keycloak-data:/opt/keycloak/data
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000; echo -e \"GET /health/ready HTTP/1.1\\r\\nhost: localhost:9000\\r\\nConnection: close\\r\\n\\r\\n\" >&3; timeout --preserve-status 1 cat <&3 | grep -m 1 UP; ERROR=$?; exec 3<&-; exec 3>&-; exit $ERROR"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - gateway-net
+
+  # ============================================================
+  # Consul - Service Discovery
+  # ============================================================
+  consul:
+    image: hashicorp/consul:1.22
+    container_name: api-gateway-consul
+    ports:
+      - "8500:8500"
+    command: agent -dev -ui -client=0.0.0.0
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gateway-net
+
+  # ============================================================
+  # Observability - Jaeger (Tracing)
+  # ============================================================
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: api-gateway-jaeger
+    ports:
+      - "16686:16686" # UI
+      - "4317:4317"   # OTLP gRPC Receiver
+      - "4318:4318"   # OTLP HTTP Receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - gateway-net
+
+  # ============================================================
+  # Observability - Prometheus (Metrics)
+  # ============================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: api-gateway-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - gateway-net
+
+  # ============================================================
+  # API Gateway (Spring Cloud Gateway)
+  # ============================================================
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_REDIS_HOST: api-gateway-redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_CLOUD_CONSUL_HOST: api-gateway-consul
+      SPRING_CLOUD_CONSUL_PORT: 8500
+      SPRING_CONFIG_ENABLED: "false"
+      JWT_ISSUER_URI: http://localhost:8180/realms/api-gateway
+      JWT_JWK_SET_URI: http://api-gateway-keycloak:8180/realms/api-gateway/protocol/openid-connect/certs
+      MANAGEMENT_OTLP_TRACING_ENDPOINT: http://api-gateway-jaeger:4318/v1/traces
+    depends_on:
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - gateway-net
+
+volumes:
+  redis-data:
+  keycloak-data:
+
+networks:
+  gateway-net:
+    driver: bridge
